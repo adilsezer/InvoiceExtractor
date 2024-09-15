@@ -76,10 +76,13 @@ namespace InvoiceExtractor.ViewModels
 
                     if (matchedTemplate != null)
                     {
-                        var invoice = await Task.Run(() => _pdfService.ExtractInvoice(filePath, matchedTemplate));
-                        if (invoice != null)
+                        var invoices = await Task.Run(() => _pdfService.ExtractInvoices(filePath, matchedTemplate));
+                        if (invoices != null && invoices.Count > 0)
                         {
-                            Application.Current.Dispatcher.Invoke(() => Invoices.Add(invoice));
+                            foreach (var invoice in invoices)
+                            {
+                                Application.Current.Dispatcher.Invoke(() => Invoices.Add(invoice));
+                            }
                         }
                         else
                         {

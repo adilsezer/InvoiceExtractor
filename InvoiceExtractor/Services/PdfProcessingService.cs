@@ -9,39 +9,47 @@ namespace InvoiceExtractor.Services
 {
     public class PdfProcessingService : IPdfProcessingService
     {
-        // Extracts invoice details using PdfPig for text extraction
-        public InvoiceModel ExtractInvoice(string pdfPath, TemplateModel template)
+        // Extracts multiple invoice details from a single PDF using PdfPig for text extraction
+        public List<InvoiceModel> ExtractInvoices(string pdfPath, TemplateModel template)
         {
             string fullText = ExtractFullTextFromPdf(pdfPath);
-            if (string.IsNullOrEmpty(fullText)) return null!;
+            if (string.IsNullOrEmpty(fullText)) return new List<InvoiceModel>();
 
-            InvoiceModel invoice = new InvoiceModel();
-            foreach (var field in template.Fields.Values)
+            var invoices = new List<InvoiceModel>();
+
+            // Split full text into sections that represent different invoices
+            var invoiceSections = SplitIntoInvoices(fullText, template);
+
+            // Loop through each section and create an invoice model
+            foreach (var section in invoiceSections)
             {
-                string value = ExtractFieldValue(fullText, field.Keyword);
-                if (!string.IsNullOrEmpty(value))
+                var invoice = new InvoiceModel();
+                foreach (var field in template.Fields.Values)
                 {
-                    AssignValueToInvoice(invoice, field.FieldName, value);
+                    string value = ExtractFieldValue(section, field.Keyword);
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        AssignValueToInvoice(invoice, field.FieldName, value);
+                    }
+                }
+
+                // Add invoice to the list only if it has meaningful data
+                if (!string.IsNullOrEmpty(invoice.InvoiceNumber))
+                {
+                    invoices.Add(invoice);
                 }
             }
 
-            return invoice;
+            return invoices;
         }
 
-        // Check if template matches the PDF content using PdfPig
+        // Check if template matches any of the invoices in the PDF content using PdfPig
         public bool IsTemplateMatch(string pdfPath, TemplateModel template)
         {
             string fullText = ExtractFullTextFromPdf(pdfPath);
             if (string.IsNullOrEmpty(fullText)) return false;
 
-            foreach (var field in template.Fields.Values)
-            {
-                if (!fullText.Contains(field.Keyword, StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-            }
-            return true;
+            return template.Fields.Values.All(field => fullText.Contains(field.Keyword, StringComparison.OrdinalIgnoreCase));
         }
 
         // Convert PDF page to image using PDFtoImage
@@ -53,7 +61,6 @@ namespace InvoiceExtractor.Services
             {
                 using (var pdfStream = File.OpenRead(pdfPath))
                 {
-                    // Using PDFtoImage library to convert PDF to image
                     Conversion.SavePng(outputImagePath, pdfStream, (Index)(pageNumber - 1), options: new(Dpi: dpi));
                 }
             }
@@ -75,7 +82,7 @@ namespace InvoiceExtractor.Services
                 {
                     var fullText = new System.Text.StringBuilder();
 
-                    // Use a more advanced text extraction method to keep word separation intact
+                    // Use advanced text extraction method to keep word separation intact
                     foreach (var page in document.GetPages())
                     {
                         var text = ContentOrderTextExtractor.GetText(page);
@@ -90,6 +97,47 @@ namespace InvoiceExtractor.Services
                 Console.WriteLine($"Error extracting text from PDF: {ex.Message}");
                 return null!;
             }
+        }
+
+        // Split the full text into sections representing different invoices
+        private List<string> SplitIntoInvoices(string fullText, TemplateModel template)
+        {
+            // Get all possible keywords from the template fields
+            var possibleDelimiters = template.Fields.Values
+                                              .Where(field => !string.IsNullOrWhiteSpace(field.Keyword))
+                                              .Select(field => Regex.Escape(field.Keyword))
+                                              .ToList();
+
+            if (possibleDelimiters.Count == 0)
+            {
+                throw new InvalidOperationException("No keywords found in the template to split invoices.");
+            }
+
+            // Extract the first page's text (assuming '\f' is used to separate pages)
+            string firstPageText = fullText.Split(new[] { '\f' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? fullText;
+
+            // Build a regex pattern that matches any of the key fields in the first page
+            string combinedPattern = string.Join("|", possibleDelimiters);
+
+            // Find the first occurrence of any of the key fields in the first page
+            var firstMatch = Regex.Match(firstPageText, combinedPattern);
+
+            if (!firstMatch.Success)
+            {
+                // No keyword found in the first page, return the full document as a single section
+                return new List<string> { fullText };
+            }
+
+            // Use the first field that appears as the delimiter
+            string delimiter = firstMatch.Value;
+
+            // Now, use this delimiter to split the full document into different invoices
+            var invoiceSections = Regex.Split(fullText, Regex.Escape(delimiter))
+                                       .Where(section => !string.IsNullOrWhiteSpace(section))
+                                       .Select(section => delimiter + section.Trim()) // Re-add the delimiter at the start
+                                       .ToList();
+
+            return invoiceSections;
         }
 
         // Extract field value using regex
