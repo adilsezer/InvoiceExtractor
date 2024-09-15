@@ -5,7 +5,7 @@
 InvoiceExtractor is a .NET application to extract invoice details from PDF documents using templates. It supports extracting fields like InvoiceNumber, InvoiceDate, Vendor, Description, and Amount.
 
 ### Main Application GUI
-![Alt text](https://github.com/adilsezer/InvoiceExtractor/blob/main/InvoiceExtractor/Assets/invoice_extractor_screenshot.png?raw=true "InvoiceExtractor")
+![Alt text](https://github.com/adilsezer/InvoiceExtractor/blob/master/InvoiceExtractor/Assets/invoice_extractor_screenshot.png?raw=true "InvoiceExtractor")
 
 ## Features
 - Extracts multiple invoices, treating each PDF page as a separate invoice.
