@@ -3,41 +3,59 @@ using PDFtoImage;
 using System.IO;
 using System.Text.RegularExpressions;
 using UglyToad.PdfPig;
+using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace InvoiceExtractor.Services
 {
     public class PdfProcessingService : IPdfProcessingService
     {
-        // Extracts multiple invoice details from a single PDF using PdfPig for text extraction
+        // Extracts multiple invoice details from a single PDF, treating each page as a new invoice
         public List<InvoiceModel> ExtractInvoices(string pdfPath, TemplateModel template)
         {
-            string fullText = ExtractFullTextFromPdf(pdfPath);
-            if (string.IsNullOrEmpty(fullText)) return new List<InvoiceModel>();
-
             var invoices = new List<InvoiceModel>();
 
-            // Split full text into sections that represent different invoices
-            var invoiceSections = SplitIntoInvoices(fullText, template);
-
-            // Loop through each section and create an invoice model
-            foreach (var section in invoiceSections)
+            try
             {
-                var invoice = new InvoiceModel();
-                foreach (var field in template.Fields.Values)
+                using (var document = PdfDocument.Open(pdfPath))
                 {
-                    string value = ExtractFieldValue(section, field.Keyword);
-                    if (!string.IsNullOrEmpty(value))
+                    // Loop through each page of the document
+                    foreach (var page in document.GetPages())
                     {
-                        AssignValueToInvoice(invoice, field.FieldName, value);
+                        // Extract text for the current page
+                        string pageText = ContentOrderTextExtractor.GetText(page);
+
+                        // Create a new invoice model for each page
+                        var invoice = new InvoiceModel();
+
+                        // Extract fields based on the template for each page
+                        foreach (var field in template.Fields.Values)
+                        {
+                            string value = ExtractFieldValue(pageText, field.Keyword);
+
+                            // If regex extraction fails, attempt to use coordinates for extraction
+                            if (string.IsNullOrEmpty(value) && field.XCoordinate > 0 && field.YCoordinate > 0)
+                            {
+                                value = ExtractTextUsingCoordinates(pdfPath, field, page.Number);
+                            }
+
+                            if (!string.IsNullOrEmpty(value))
+                            {
+                                AssignValueToInvoice(invoice, field.FieldName, value);
+                            }
+                        }
+
+                        // Add the invoice if it has meaningful data (e.g., InvoiceNumber is populated)
+                        if (!string.IsNullOrEmpty(invoice.InvoiceNumber))
+                        {
+                            invoices.Add(invoice);
+                        }
                     }
                 }
-
-                // Add invoice to the list only if it has meaningful data
-                if (!string.IsNullOrEmpty(invoice.InvoiceNumber))
-                {
-                    invoices.Add(invoice);
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error extracting invoices: {ex.Message}");
             }
 
             return invoices;
@@ -82,7 +100,7 @@ namespace InvoiceExtractor.Services
                 {
                     var fullText = new System.Text.StringBuilder();
 
-                    // Use advanced text extraction method to keep word separation intact
+                    // Extract text from each page
                     foreach (var page in document.GetPages())
                     {
                         var text = ContentOrderTextExtractor.GetText(page);
@@ -97,47 +115,6 @@ namespace InvoiceExtractor.Services
                 Console.WriteLine($"Error extracting text from PDF: {ex.Message}");
                 return null!;
             }
-        }
-
-        // Split the full text into sections representing different invoices
-        private List<string> SplitIntoInvoices(string fullText, TemplateModel template)
-        {
-            // Get all possible keywords from the template fields
-            var possibleDelimiters = template.Fields.Values
-                                              .Where(field => !string.IsNullOrWhiteSpace(field.Keyword))
-                                              .Select(field => Regex.Escape(field.Keyword))
-                                              .ToList();
-
-            if (possibleDelimiters.Count == 0)
-            {
-                throw new InvalidOperationException("No keywords found in the template to split invoices.");
-            }
-
-            // Extract the first page's text (assuming '\f' is used to separate pages)
-            string firstPageText = fullText.Split(new[] { '\f' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? fullText;
-
-            // Build a regex pattern that matches any of the key fields in the first page
-            string combinedPattern = string.Join("|", possibleDelimiters);
-
-            // Find the first occurrence of any of the key fields in the first page
-            var firstMatch = Regex.Match(firstPageText, combinedPattern);
-
-            if (!firstMatch.Success)
-            {
-                // No keyword found in the first page, return the full document as a single section
-                return new List<string> { fullText };
-            }
-
-            // Use the first field that appears as the delimiter
-            string delimiter = firstMatch.Value;
-
-            // Now, use this delimiter to split the full document into different invoices
-            var invoiceSections = Regex.Split(fullText, Regex.Escape(delimiter))
-                                       .Where(section => !string.IsNullOrWhiteSpace(section))
-                                       .Select(section => delimiter + section.Trim()) // Re-add the delimiter at the start
-                                       .ToList();
-
-            return invoiceSections;
         }
 
         // Extract field value using regex
@@ -171,6 +148,47 @@ namespace InvoiceExtractor.Services
                         invoice.Amount = amount;
                     break;
             }
+        }
+
+        // Extract text using coordinates if regex fails
+        private string ExtractTextUsingCoordinates(string pdfPath, ExtractionField field, int pageNumber)
+        {
+            try
+            {
+                using (var document = PdfDocument.Open(pdfPath))
+                {
+                    var page = document.GetPage(pageNumber);
+
+                    // Define a bounding box around the coordinates
+                    var boundingBox = new PdfRectangle(
+                        field.XCoordinate, field.YCoordinate,
+                        field.XCoordinate + 50, field.YCoordinate + 20);
+
+                    // Get all letters on the page
+                    var letters = page.Letters;
+
+                    // Filter letters that fall within the bounding box
+                    var lettersInBox = letters.Where(letter =>
+                        letter.GlyphRectangle.Left >= boundingBox.Left &&
+                        letter.GlyphRectangle.Right <= boundingBox.Right &&
+                        letter.GlyphRectangle.Bottom >= boundingBox.Bottom &&
+                        letter.GlyphRectangle.Top <= boundingBox.Top);
+
+                    // Combine the filtered letters into a string
+                    var extractedText = string.Concat(lettersInBox.Select(letter => letter.Value));
+
+                    if (!string.IsNullOrEmpty(extractedText))
+                    {
+                        return extractedText.Trim();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error extracting text from PDF using coordinates: {ex.Message}");
+            }
+
+            return string.Empty;
         }
     }
 }
