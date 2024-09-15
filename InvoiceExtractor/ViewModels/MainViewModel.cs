@@ -35,6 +35,7 @@ namespace InvoiceExtractor.ViewModels
         public ICommand UploadPdfCommand { get; }
         public ICommand ExportCsvCommand { get; }
         public ICommand ManageTemplatesCommand { get; }
+        public ICommand ClearDataCommand { get; }
 
         public MainViewModel(IPdfProcessingService pdfService, IStorageService storageService)
         {
@@ -47,9 +48,16 @@ namespace InvoiceExtractor.ViewModels
             UploadPdfCommand = new RelayCommand(UploadPdf);
             ExportCsvCommand = new RelayCommand(ExportCsv, CanExportCsv);
             ManageTemplatesCommand = new RelayCommand(ManageTemplates);
+            ClearDataCommand = new RelayCommand(ClearData);
 
             // Subscribe to collection changes to update command states
             Invoices.CollectionChanged += (s, e) => ((RelayCommand)ExportCsvCommand).RaiseCanExecuteChanged();
+        }
+
+        private void ClearData()
+        {
+            Invoices = new ObservableCollection<InvoiceModel>();
+            OnPropertyChanged(nameof(Invoices));
         }
 
         private async void UploadPdf()
@@ -80,7 +88,10 @@ namespace InvoiceExtractor.ViewModels
                     }
                     else
                     {
-                        SelectTemplateManually(filePath);
+                        MessageBox.Show($"No matching template was found for the uploaded invoice.. Please verify the file and try again, or consider adding a new template to handle this type of document.",
+                                        "Template Not Found",
+                                        MessageBoxButton.OK,
+                                        MessageBoxImage.Warning);
                     }
                 }
             }
@@ -96,33 +107,6 @@ namespace InvoiceExtractor.ViewModels
                 }
             }
             return null;
-        }
-
-        private void SelectTemplateManually(string pdfPath)
-        {
-            if (Templates.Count == 0)
-            {
-                MessageBox.Show("No templates available. Please create a template first.", "No Templates", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var templateSelectionWindow = new TemplateSelectionWindow(Templates);
-            if (templateSelectionWindow.ShowDialog() == true)
-            {
-                var selectedTemplate = templateSelectionWindow.SelectedTemplate;
-                if (selectedTemplate != null)
-                {
-                    var invoice = _pdfService.ExtractInvoice(pdfPath, selectedTemplate);
-                    if (invoice != null)
-                    {
-                        Application.Current.Dispatcher.Invoke(() => Invoices.Add(invoice));
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Failed to extract data from {Path.GetFileName(pdfPath)} using template {selectedTemplate.TemplateName}.", "Extraction Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-            }
         }
 
         private bool CanExportCsv()

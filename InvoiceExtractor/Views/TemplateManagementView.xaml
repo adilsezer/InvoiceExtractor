@@ -47,15 +47,7 @@
             <Button Content="Delete Template" Command="{Binding DeleteTemplateCommand}" 
                     CommandParameter="{Binding SelectedTemplate}" Width="120" />
         </StackPanel>
-
-        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" Margin="5">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="Add Field" Command="{Binding AddFieldCommand}" Width="120" Margin="0,0,10,0"/>
-                <Button Content="Remove Field" Command="{Binding RemoveFieldCommand}" 
-                CommandParameter="{Binding SelectedItem, ElementName=FieldsDataGrid}" Width="120" Margin="0,0,10,0"/>
-                <Button Content="Save Template" Command="{Binding SaveTemplateCommand}" Width="120"/>
-            </StackPanel>
-        </StackPanel>
+        <Button Grid.Row="2" Grid.Column="1" Content="Save Template" Command="{Binding SaveTemplateCommand}" Width="120" Margin="5"/>
         <Button Content="Load PDF" Command="{Binding LoadPdfCommand}" Grid.Row="2" Grid.Column="2" Width="100" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="5"/>
 
         <!-- Fifth Row: ListBox, Load PDF button with Image, and DataGrid -->

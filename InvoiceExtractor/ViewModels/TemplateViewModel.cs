@@ -47,7 +47,6 @@ namespace InvoiceExtractor.ViewModels
 
                     // Notify the Save command to re-evaluate if it can execute
                     ((RelayCommand)SaveTemplateCommand).RaiseCanExecuteChanged();
-                    ((RelayCommand)AddFieldCommand).RaiseCanExecuteChanged();
                     OnPropertyChanged(nameof(IsTemplateSelected));
                 }
             }
@@ -62,7 +61,6 @@ namespace InvoiceExtractor.ViewModels
                 if (SetProperty(ref _selectedField, value))
                 {
                     // Notify that the CanRemoveField command needs to be re-evaluated
-                    ((RelayCommand)RemoveFieldCommand).RaiseCanExecuteChanged();
                     OnPropertyChanged(nameof(SelectedField));
                 }
             }
@@ -88,8 +86,6 @@ namespace InvoiceExtractor.ViewModels
         public ICommand AddTemplateCommand { get; }
         public ICommand SaveTemplateCommand { get; }
         public ICommand DeleteTemplateCommand { get; }
-        public ICommand AddFieldCommand { get; }
-        public ICommand RemoveFieldCommand { get; }
         public ICommand LoadPdfCommand { get; }
 
         public TemplateViewModel(IStorageService storageService, IPdfProcessingService pdfProcessingService, ObservableCollection<TemplateModel> templates)
@@ -101,8 +97,6 @@ namespace InvoiceExtractor.ViewModels
 
             AddTemplateCommand = new RelayCommand(AddTemplate);
             SaveTemplateCommand = new RelayCommand(SaveTemplate, CanSaveTemplate);
-            AddFieldCommand = new RelayCommand(AddField, CanAddField);
-            RemoveFieldCommand = new RelayCommand(RemoveField, CanRemoveField);
             DeleteTemplateCommand = new RelayCommand(param => DeleteTemplate((TemplateModel)param), param => CanDeleteTemplate((TemplateModel)param));
             LoadPdfCommand = new RelayCommand(LoadPdf);
 
@@ -127,20 +121,22 @@ namespace InvoiceExtractor.ViewModels
                 newTemplateName = $"{baseName} {counter++}";
             }
 
-            // Create a new template with the unique name
+            // Create a new template with the unique name and predefined fields
             var newTemplate = new TemplateModel
             {
                 TemplateName = newTemplateName,
-                Fields = new Dictionary<string, ExtractionField>()
+                Fields = new Dictionary<string, ExtractionField>
+        {
+            { "InvoiceNumber", new ExtractionField { FieldName = "InvoiceNumber", Keyword = "Invoice Number", XCoordinate = 0, YCoordinate = 0 } },
+            { "InvoiceDate", new ExtractionField { FieldName = "InvoiceDate", Keyword = "Invoice Date", XCoordinate = 0, YCoordinate = 0 } },
+            { "Vendor", new ExtractionField { FieldName = "Vendor", Keyword = "Vendor", XCoordinate = 0, YCoordinate = 0 } },
+            { "Description", new ExtractionField { FieldName = "Description", Keyword = "Description", XCoordinate = 0, YCoordinate = 0 } },
+            { "Amount", new ExtractionField { FieldName = "Amount", Keyword = "Amount", XCoordinate = 0, YCoordinate = 0 } }
+        }
             };
 
             Templates.Add(newTemplate);
             SelectedTemplate = newTemplate;
-        }
-
-        private bool CanAddField()
-        {
-            return SelectedTemplate != null && !string.IsNullOrWhiteSpace(SelectedTemplate.TemplateName);
         }
 
         private void MarkAsDirty()
@@ -191,41 +187,6 @@ namespace InvoiceExtractor.ViewModels
             {
                 Templates.Remove(template);
                 _storageService.SaveTemplates(Templates);
-            }
-        }
-
-        private void AddField()
-        {
-            if (SelectedTemplate != null)
-            {
-                var newField = new ExtractionField
-                {
-                    FieldName = "NewField",
-                    Keyword = "Keyword",
-                    XCoordinate = 0,
-                    YCoordinate = 0
-                };
-                EditTemplateFields.Add(newField);
-
-                // Notify that SaveTemplateCommand's execution state may have changed
-                ((RelayCommand)SaveTemplateCommand).RaiseCanExecuteChanged();
-                MarkAsDirty();
-            }
-        }
-
-        private bool CanRemoveField()
-        {
-            return SelectedField != null;
-        }
-
-        private void RemoveField()
-        {
-            if (SelectedField != null)
-            {
-                EditTemplateFields.Remove(SelectedField);
-
-                // Notify that the SaveTemplateCommand's execution state may have changed
-                ((RelayCommand)SaveTemplateCommand).RaiseCanExecuteChanged();
             }
         }
     }

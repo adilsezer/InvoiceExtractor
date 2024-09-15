@@ -10,6 +10,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="10,0,0,10">
                 <Button Content="Upload PDF" Command="{Binding UploadPdfCommand}" Width="100" />
                 <Button Content="Manage Templates" Command="{Binding ManageTemplatesCommand}" Margin="10,0,0,0" Width="150"/>
+                <Button Content="Clear Data" Command="{Binding ClearDataCommand}" Margin="10,0,0,0" Width="150"/>
                 <Button Content="Export CSV" Command="{Binding ExportCsvCommand}" Margin="10,0,0,0" Width="100"/>
             </StackPanel>
 

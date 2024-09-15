@@ -3,6 +3,7 @@ using PDFtoImage;
 using System.IO;
 using System.Text.RegularExpressions;
 using UglyToad.PdfPig;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace InvoiceExtractor.Services
 {
@@ -72,13 +73,16 @@ namespace InvoiceExtractor.Services
             {
                 using (var document = PdfDocument.Open(pdfPath))
                 {
-                    string fullText = "";
+                    var fullText = new System.Text.StringBuilder();
+
+                    // Use a more advanced text extraction method to keep word separation intact
                     foreach (var page in document.GetPages())
                     {
-                        fullText += page.Text + "\n";
+                        var text = ContentOrderTextExtractor.GetText(page);
+                        fullText.AppendLine(text);
                     }
 
-                    return fullText;
+                    return fullText.ToString();
                 }
             }
             catch (Exception ex)
@@ -106,7 +110,7 @@ namespace InvoiceExtractor.Services
                     break;
                 case "InvoiceDate":
                     if (DateTime.TryParse(value, out DateTime date))
-                        invoice.InvoiceDate = date;
+                        invoice.InvoiceDate = date.ToString("yyyy-MM-dd");
                     break;
                 case "Vendor":
                     invoice.Vendor = value;
