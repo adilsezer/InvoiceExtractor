@@ -1,0 +1,47 @@
+﻿<UserControl x:Class="InvoiceExtractor.Views.TemplateManagementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:InvoiceExtractor.ViewModels"
+             Height="500" Width="700">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Margin="10">
+            <TextBlock Text="Templates" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+            <ListBox ItemsSource="{Binding Templates}" SelectedItem="{Binding SelectedTemplate}" DisplayMemberPath="TemplateName" Height="400"/>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Add Template" Command="{Binding AddTemplateCommand}" Width="100" Margin="0,0,10,0"/>
+                <Button Content="Delete Template" Command="{Binding DeleteTemplateCommand}" Width="100" 
+                        CommandParameter="{Binding SelectedTemplate}" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Margin="10">
+            <TextBlock Text="Template Details" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="Template Name:" Width="100" VerticalAlignment="Center"/>
+                <TextBox Text="{Binding SelectedTemplate.TemplateName, UpdateSourceTrigger=PropertyChanged}" Width="200"/>
+            </StackPanel>
+
+            <TextBlock Text="Extraction Fields" FontWeight="Bold" Margin="0,0,0,5"/>
+            <DataGrid ItemsSource="{Binding EditTemplateFields}" AutoGenerateColumns="False" Height="300" CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Field Name" Binding="{Binding FieldName}" Width="*"/>
+                    <DataGridTextColumn Header="Keyword" Binding="{Binding Keyword}" Width="*"/>
+                    <DataGridTextColumn Header="X Coordinate" Binding="{Binding XCoordinate}" Width="*"/>
+                    <DataGridTextColumn Header="Y Coordinate" Binding="{Binding YCoordinate}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Add Field" Command="{Binding AddFieldCommand}" Width="100" Margin="0,0,10,0"/>
+                <Button Content="Remove Field" Command="{Binding RemoveFieldCommand}" 
+                        CommandParameter="{Binding SelectedItem, ElementName=FieldsDataGrid}" Width="100"/>
+            </StackPanel>
+            <Button Content="Save Template" Command="{Binding SaveTemplateCommand}" Width="100" Margin="0,20,0,0" HorizontalAlignment="Left"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
