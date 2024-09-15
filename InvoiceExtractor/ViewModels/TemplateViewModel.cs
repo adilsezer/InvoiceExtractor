@@ -3,7 +3,6 @@ using InvoiceExtractor.Services;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
-
 namespace InvoiceExtractor.ViewModels
 {
     public class TemplateViewModel : BaseViewModel
@@ -22,6 +21,7 @@ namespace InvoiceExtractor.ViewModels
                 if (SetProperty(ref _selectedTemplate, value))
                 {
                     EditTemplateFields.Clear();
+
                     if (_selectedTemplate != null)
                     {
                         foreach (var field in _selectedTemplate.Fields.Values)
@@ -29,6 +29,9 @@ namespace InvoiceExtractor.ViewModels
                             EditTemplateFields.Add(field);
                         }
                     }
+
+                    // Notify the Save command to re-evaluate if it can execute
+                    ((RelayCommand)SaveTemplateCommand).RaiseCanExecuteChanged();
                 }
             }
         }
@@ -51,6 +54,11 @@ namespace InvoiceExtractor.ViewModels
             DeleteTemplateCommand = new RelayCommand(param => DeleteTemplate((TemplateModel)param), param => CanDeleteTemplate((TemplateModel)param));
             RemoveFieldCommand = new RelayCommand(param => RemoveField((ExtractionField)param), param => CanRemoveField((ExtractionField)param));
 
+            // Trigger RaiseCanExecuteChanged when the fields collection changes
+            EditTemplateFields.CollectionChanged += (s, e) =>
+            {
+                ((RelayCommand)SaveTemplateCommand).RaiseCanExecuteChanged();
+            };
         }
 
         private void AddTemplate()
@@ -106,6 +114,9 @@ namespace InvoiceExtractor.ViewModels
                     YCoordinate = 0
                 };
                 EditTemplateFields.Add(newField);
+
+                // Notify that SaveTemplateCommand's execution state may have changed
+                ((RelayCommand)SaveTemplateCommand).RaiseCanExecuteChanged();
             }
         }
 
@@ -119,6 +130,9 @@ namespace InvoiceExtractor.ViewModels
             if (field != null)
             {
                 EditTemplateFields.Remove(field);
+
+                // Notify that SaveTemplateCommand's execution state may have changed
+                ((RelayCommand)SaveTemplateCommand).RaiseCanExecuteChanged();
             }
         }
     }
