@@ -7,19 +7,10 @@
     <Grid>
         <StackPanel Orientation="Vertical" Margin="10">
             <!-- Upload and Export Buttons -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,10">
-                <Button Content="Upload PDF" Command="{Binding UploadPdfCommand}" Width="100" Margin="0,0,10,0"/>
-                <Button Content="Export CSV" Command="{Binding ExportCsvCommand}" Width="100"/>
-            </StackPanel>
-
-            <!-- Template Selection -->
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
-                <TextBlock Text="Select Template:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <ComboBox ItemsSource="{Binding Templates}"
-                          SelectedItem="{Binding SelectedTemplate}"
-                          DisplayMemberPath="TemplateName"
-                          Width="200"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="10,0,0,10">
+                <Button Content="Upload PDF" Command="{Binding UploadPdfCommand}" Width="100" />
                 <Button Content="Manage Templates" Command="{Binding ManageTemplatesCommand}" Margin="10,0,0,0" Width="150"/>
+                <Button Content="Export CSV" Command="{Binding ExportCsvCommand}" Margin="10,0,0,0" Width="100"/>
             </StackPanel>
 
             <!-- Invoices DataGrid -->
@@ -27,8 +18,7 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Invoice Number" Binding="{Binding InvoiceNumber}" Width="*"/>
                     <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=\{0:MM/dd/yyyy\}}" Width="*"/>
-                    <DataGridTextColumn Header="Seller Details" Binding="{Binding SellerDetails}" Width="*"/>
-                    <DataGridTextColumn Header="Buyer Details" Binding="{Binding BuyerDetails}" Width="*"/>
+                    <DataGridTextColumn Header="Vendor" Binding="{Binding Vendor}" Width="*"/>
                     <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
                     <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" Width="*"/>
                 </DataGrid.Columns>

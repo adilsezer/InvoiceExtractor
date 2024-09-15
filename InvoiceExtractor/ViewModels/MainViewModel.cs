@@ -154,13 +154,23 @@ namespace InvoiceExtractor.ViewModels
 
         private void ManageTemplates()
         {
-            var templateManagementWindow = new TemplateManagementWindow(_storageService);
+            var templateManagementWindow = new TemplateManagementWindow(_storageService, _pdfService, Templates);
+
             if (templateManagementWindow.ShowDialog() == true)
             {
-                Templates.Clear();
-                foreach (var template in _storageService.LoadTemplates())
+                // Reload updated templates from the storage service
+                var updatedTemplates = _storageService.LoadTemplates();
+
+                // Instead of clearing and repopulating, reset the ObservableCollection
+                Templates = new ObservableCollection<TemplateModel>(updatedTemplates);
+
+                // Notify the UI that the Templates property has changed
+                OnPropertyChanged(nameof(Templates));
+
+                // Optionally, set SelectedTemplate to the first one, if needed
+                if (Templates.Count > 0)
                 {
-                    Templates.Add(template);
+                    SelectedTemplate = Templates[0];
                 }
             }
         }

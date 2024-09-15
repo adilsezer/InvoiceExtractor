@@ -1,89 +1,102 @@
 ﻿using InvoiceExtractor.Models;
-using iText.Kernel.Pdf;
-using iText.Kernel.Pdf.Canvas.Parser;
-using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using PDFtoImage;
+using System.IO;
 using System.Text.RegularExpressions;
+using UglyToad.PdfPig;
 
 namespace InvoiceExtractor.Services
 {
     public class PdfProcessingService : IPdfProcessingService
     {
+        // Extracts invoice details using PdfPig for text extraction
         public InvoiceModel ExtractInvoice(string pdfPath, TemplateModel template)
         {
+            string fullText = ExtractFullTextFromPdf(pdfPath);
+            if (string.IsNullOrEmpty(fullText)) return null!;
+
             InvoiceModel invoice = new InvoiceModel();
-
-            try
+            foreach (var field in template.Fields.Values)
             {
-                using (PdfReader reader = new PdfReader(pdfPath))
-                using (PdfDocument pdfDoc = new PdfDocument(reader))
+                string value = ExtractFieldValue(fullText, field.Keyword);
+                if (!string.IsNullOrEmpty(value))
                 {
-                    var strategy = new SimpleTextExtractionStrategy();
-                    string fullText = "";
-
-                    for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
-                    {
-                        var page = pdfDoc.GetPage(i);
-                        string pageContent = PdfTextExtractor.GetTextFromPage(page, strategy);
-                        fullText += pageContent + "\n";
-                    }
-
-                    foreach (var field in template.Fields.Values)
-                    {
-                        string pattern = $"{Regex.Escape(field.Keyword)}\\s*(.*)";
-                        var match = Regex.Match(fullText, pattern, RegexOptions.IgnoreCase);
-                        if (match.Success)
-                        {
-                            string value = match.Groups[1].Value.Trim();
-                            AssignValueToInvoice(invoice, field.FieldName, value);
-                        }
-                    }
+                    AssignValueToInvoice(invoice, field.FieldName, value);
                 }
-            }
-            catch
-            {
-                // Handle exceptions as needed
-                return null!;
             }
 
             return invoice;
         }
 
+        // Check if template matches the PDF content using PdfPig
         public bool IsTemplateMatch(string pdfPath, TemplateModel template)
+        {
+            string fullText = ExtractFullTextFromPdf(pdfPath);
+            if (string.IsNullOrEmpty(fullText)) return false;
+
+            foreach (var field in template.Fields.Values)
+            {
+                if (!fullText.Contains(field.Keyword, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Convert PDF page to image using PDFtoImage
+        public string ConvertPdfPageToImage(string pdfPath, int pageNumber = 1, int dpi = 300)
+        {
+            string outputImagePath = Path.Combine(Path.GetDirectoryName(pdfPath), $"pdf_page_{pageNumber}.png");
+
+            try
+            {
+                using (var pdfStream = File.OpenRead(pdfPath))
+                {
+                    // Using PDFtoImage library to convert PDF to image
+                    Conversion.SavePng(outputImagePath, pdfStream, (Index)(pageNumber - 1), options: new(Dpi: dpi));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error converting PDF to image: {ex.Message}");
+                return null!;
+            }
+
+            return outputImagePath;
+        }
+
+        // Extract full text from the PDF using PdfPig
+        private string ExtractFullTextFromPdf(string pdfPath)
         {
             try
             {
-                using (PdfReader reader = new PdfReader(pdfPath))
-                using (PdfDocument pdfDoc = new PdfDocument(reader))
+                using (var document = PdfDocument.Open(pdfPath))
                 {
-                    var strategy = new SimpleTextExtractionStrategy();
                     string fullText = "";
-
-                    for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                    foreach (var page in document.GetPages())
                     {
-                        var page = pdfDoc.GetPage(i);
-                        string pageContent = PdfTextExtractor.GetTextFromPage(page, strategy);
-                        fullText += pageContent + "\n";
+                        fullText += page.Text + "\n";
                     }
 
-                    // Check for the presence of all keywords in the template
-                    foreach (var field in template.Fields.Values)
-                    {
-                        if (!fullText.Contains(field.Keyword, StringComparison.OrdinalIgnoreCase))
-                        {
-                            return false;
-                        }
-                    }
-
-                    return true;
+                    return fullText;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Handle exceptions as needed
-                return false;
+                Console.WriteLine($"Error extracting text from PDF: {ex.Message}");
+                return null!;
             }
         }
 
+        // Extract field value using regex
+        private string ExtractFieldValue(string fullText, string keyword)
+        {
+            string pattern = $"{Regex.Escape(keyword)}\\s*(.*)";
+            var match = Regex.Match(fullText, pattern, RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
+        }
+
+        // Assign extracted values to InvoiceModel fields
         private void AssignValueToInvoice(InvoiceModel invoice, string fieldName, string value)
         {
             switch (fieldName)
@@ -95,11 +108,8 @@ namespace InvoiceExtractor.Services
                     if (DateTime.TryParse(value, out DateTime date))
                         invoice.InvoiceDate = date;
                     break;
-                case "SellerDetails":
-                    invoice.SellerDetails = value;
-                    break;
-                case "BuyerDetails":
-                    invoice.BuyerDetails = value;
+                case "Vendor":
+                    invoice.Vendor = value;
                     break;
                 case "Description":
                     invoice.Description = value;
@@ -108,7 +118,6 @@ namespace InvoiceExtractor.Services
                     if (decimal.TryParse(value, out decimal amount))
                         invoice.Amount = amount;
                     break;
-                    // Add other fields as necessary
             }
         }
     }
