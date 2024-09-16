@@ -1,5 +1,4 @@
-﻿// File: InvoiceExtractor.Tests/Services/JsonStorageServiceTests.cs
-using InvoiceExtractor.Models;
+﻿using InvoiceExtractor.Models;
 using InvoiceExtractor.Services;
 using System.Reflection;
 
@@ -145,7 +144,6 @@ namespace InvoiceExtractor.Tests.Services
         }
     }
 
-    // Mocking JsonStorageService to allow setting a custom file path for testing
     public class JsonStorageServiceMock : JsonStorageService
     {
         public JsonStorageServiceMock(string filePath)
@@ -153,7 +151,6 @@ namespace InvoiceExtractor.Tests.Services
             SetFilePath(filePath);
         }
 
-        // Expose a method to set the file path for testing purposes
         public void SetFilePath(string filePath)
         {
             var field = typeof(JsonStorageService).GetField("_filePath", BindingFlags.NonPublic | BindingFlags.Instance);

@@ -3,6 +3,7 @@ using InvoiceExtractor.Services;
 using InvoiceExtractor.ViewModels;
 using Moq;
 using System.Collections.ObjectModel;
+using System.Windows;
 
 namespace InvoiceExtractor.Tests.ViewModels
 {
@@ -10,6 +11,7 @@ namespace InvoiceExtractor.Tests.ViewModels
     {
         private readonly Mock<IStorageService> _storageServiceMock;
         private readonly Mock<IPdfProcessingService> _pdfProcessingServiceMock;
+        private readonly Mock<IMessageBoxService> _messageBoxServiceMock;
         private readonly ObservableCollection<TemplateModel> _templates;
         private readonly TemplateViewModel _viewModel;
 
@@ -17,6 +19,7 @@ namespace InvoiceExtractor.Tests.ViewModels
         {
             _storageServiceMock = new Mock<IStorageService>();
             _pdfProcessingServiceMock = new Mock<IPdfProcessingService>();
+            _messageBoxServiceMock = new Mock<IMessageBoxService>();
 
             _templates = new ObservableCollection<TemplateModel>
             {
@@ -31,7 +34,7 @@ namespace InvoiceExtractor.Tests.ViewModels
                 }
             };
 
-            _viewModel = new TemplateViewModel(_storageServiceMock.Object, _pdfProcessingServiceMock.Object, _templates);
+            _viewModel = new TemplateViewModel(_storageServiceMock.Object, _pdfProcessingServiceMock.Object, _messageBoxServiceMock.Object, _templates);
         }
 
         [Fact]
@@ -81,6 +84,10 @@ namespace InvoiceExtractor.Tests.ViewModels
             // Arrange
             var templateToDelete = _viewModel.Templates.First();
             _viewModel.SelectedTemplate = templateToDelete;
+
+            _messageBoxServiceMock
+                .Setup(m => m.Show(It.IsAny<string>(), It.IsAny<string>(), MessageBoxButton.YesNo, MessageBoxImage.Question))
+                .Returns(MessageBoxResult.Yes);
 
             // Act
             _viewModel.DeleteTemplateCommand.Execute(templateToDelete);

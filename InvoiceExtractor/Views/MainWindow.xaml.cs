@@ -10,12 +10,11 @@ namespace InvoiceExtractor
         {
             InitializeComponent();
 
-            // Initialize services
             IStorageService storageService = new JsonStorageService();
             IPdfProcessingService pdfService = new PdfProcessingService();
+            IMessageBoxService messageBoxService = new MessageBoxService();
 
-            // Set DataContext
-            DataContext = new MainViewModel(pdfService, storageService);
+            DataContext = new MainViewModel(pdfService, storageService, messageBoxService);
         }
     }
 }

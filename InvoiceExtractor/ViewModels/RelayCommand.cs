@@ -9,14 +9,12 @@ namespace InvoiceExtractor.ViewModels
 
         public event EventHandler CanExecuteChanged;
 
-        // Constructor for commands that take an object as a parameter
         public RelayCommand(Action<object> execute, Func<object, bool> canExecute = null)
         {
             _execute = execute;
             _canExecute = canExecute;
         }
 
-        // Constructor for parameterless commands
         public RelayCommand(Action execute, Func<bool> canExecute = null)
         {
             _execute = _ => execute();

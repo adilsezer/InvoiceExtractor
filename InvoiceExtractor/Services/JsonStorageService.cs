@@ -27,9 +27,8 @@ namespace InvoiceExtractor.Services
             }
             catch (JsonException ex)
             {
-                // Handle or log the error appropriately
                 Console.WriteLine($"Invalid JSON format: {ex.Message}");
-                throw; // Re-throwing the exception to ensure the test catches it
+                throw;
             }
         }
 

@@ -7,13 +7,13 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-
 namespace InvoiceExtractor.ViewModels
 {
     public class MainViewModel : BaseViewModel
     {
         private readonly IPdfProcessingService _pdfService;
         private readonly IStorageService _storageService;
+        private readonly IMessageBoxService _messageBoxService;
 
         public ObservableCollection<InvoiceModel> Invoices { get; set; }
         public ObservableCollection<TemplateModel> Templates { get; set; }
@@ -37,10 +37,11 @@ namespace InvoiceExtractor.ViewModels
         public ICommand ManageTemplatesCommand { get; }
         public ICommand ClearDataCommand { get; }
 
-        public MainViewModel(IPdfProcessingService pdfService, IStorageService storageService)
+        public MainViewModel(IPdfProcessingService pdfService, IStorageService storageService, IMessageBoxService messageBoxService)
         {
             _pdfService = pdfService;
             _storageService = storageService;
+            _messageBoxService = messageBoxService;
 
             Invoices = new ObservableCollection<InvoiceModel>();
             Templates = new ObservableCollection<TemplateModel>(_storageService.LoadTemplates());
@@ -50,8 +51,8 @@ namespace InvoiceExtractor.ViewModels
             ManageTemplatesCommand = new RelayCommand(ManageTemplates);
             ClearDataCommand = new RelayCommand(ClearData);
 
-            // Subscribe to collection changes to update command states
             Invoices.CollectionChanged += (s, e) => ((RelayCommand)ExportCsvCommand).RaiseCanExecuteChanged();
+            _messageBoxService = messageBoxService;
         }
 
         private void ClearData()
@@ -86,12 +87,12 @@ namespace InvoiceExtractor.ViewModels
                         }
                         else
                         {
-                            MessageBox.Show($"Failed to extract data from {Path.GetFileName(filePath)} using template {matchedTemplate.TemplateName}.", "Extraction Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            _messageBoxService.Show($"Failed to extract data from {Path.GetFileName(filePath)} using template {matchedTemplate.TemplateName}.", "Extraction Error", MessageBoxButton.OK, MessageBoxImage.Error);
                         }
                     }
                     else
                     {
-                        MessageBox.Show($"No matching template was found for the uploaded invoice.. Please verify the file and try again, or consider adding a new template to handle this type of document.",
+                        _messageBoxService.Show($"No matching template was found for the uploaded invoice.. Please verify the file and try again, or consider adding a new template to handle this type of document.",
                                         "Template Not Found",
                                         MessageBoxButton.OK,
                                         MessageBoxImage.Warning);
@@ -130,31 +131,27 @@ namespace InvoiceExtractor.ViewModels
                 try
                 {
                     await Task.Run(() => CsvExporter.Export(Invoices, saveFileDialog.FileName));
-                    MessageBox.Show("CSV export successful.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    _messageBoxService.Show("CSV export successful.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Failed to export CSV: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _messageBoxService.Show($"Failed to export CSV: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
 
         private void ManageTemplates()
         {
-            var templateManagementWindow = new TemplateManagementWindow(_storageService, _pdfService, Templates);
+            var templateManagementWindow = new TemplateManagementWindow(_storageService, _pdfService, _messageBoxService, Templates);
 
             if (templateManagementWindow.ShowDialog() == true)
             {
-                // Reload updated templates from the storage service
                 var updatedTemplates = _storageService.LoadTemplates();
 
-                // Instead of clearing and repopulating, reset the ObservableCollection
                 Templates = new ObservableCollection<TemplateModel>(updatedTemplates);
 
-                // Notify the UI that the Templates property has changed
                 OnPropertyChanged(nameof(Templates));
 
-                // Optionally, set SelectedTemplate to the first one, if needed
                 if (Templates.Count > 0)
                 {
                     SelectedTemplate = Templates[0];

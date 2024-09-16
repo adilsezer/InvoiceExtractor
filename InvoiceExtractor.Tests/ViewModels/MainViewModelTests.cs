@@ -9,12 +9,14 @@ namespace InvoiceExtractor.Tests.ViewModels
     {
         private readonly Mock<IPdfProcessingService> _pdfServiceMock;
         private readonly Mock<IStorageService> _storageServiceMock;
+        private readonly Mock<IMessageBoxService> _messageBoxServiceMock;
         private readonly MainViewModel _viewModel;
 
         public MainViewModelTests()
         {
             _pdfServiceMock = new Mock<IPdfProcessingService>();
             _storageServiceMock = new Mock<IStorageService>();
+            _messageBoxServiceMock = new Mock<IMessageBoxService>();
 
             var templates = new List<TemplateModel>
             {
@@ -31,7 +33,7 @@ namespace InvoiceExtractor.Tests.ViewModels
 
             _storageServiceMock.Setup(s => s.LoadTemplates()).Returns(templates);
 
-            _viewModel = new MainViewModel(_pdfServiceMock.Object, _storageServiceMock.Object);
+            _viewModel = new MainViewModel(_pdfServiceMock.Object, _storageServiceMock.Object, _messageBoxServiceMock.Object);
         }
 
         [Fact]
@@ -62,14 +64,9 @@ namespace InvoiceExtractor.Tests.ViewModels
 
             _pdfServiceMock.Setup(s => s.ExtractInvoices(pdfPath, selectedTemplate)).Returns(extractedInvoices);
 
-            // Simulate user selecting the template
             _viewModel.SelectedTemplate = selectedTemplate;
 
-            // Mock OpenFileDialog by invoking the UploadPdf method directly
-            // Note: To properly test commands involving UI elements, consider abstracting file dialogs
-
             // Act
-            // Here, we'll simulate the effect of UploadPdf by directly adding invoices
             foreach (var invoice in extractedInvoices)
             {
                 _viewModel.Invoices.Add(invoice);
