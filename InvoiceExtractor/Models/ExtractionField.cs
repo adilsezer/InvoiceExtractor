@@ -14,8 +14,11 @@ namespace InvoiceExtractor.Models
             get => _fieldName;
             set
             {
-                _fieldName = value;
-                OnPropertyChanged(nameof(FieldName));
+                if (_fieldName != value)
+                {
+                    _fieldName = value;
+                    OnPropertyChanged(nameof(FieldName));
+                }
             }
         }
 

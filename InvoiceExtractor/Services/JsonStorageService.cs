@@ -20,8 +20,17 @@ namespace InvoiceExtractor.Services
 
         public IEnumerable<TemplateModel> LoadTemplates()
         {
-            var json = File.ReadAllText(_filePath);
-            return JsonSerializer.Deserialize<List<TemplateModel>>(json) ?? new List<TemplateModel>();
+            try
+            {
+                var json = File.ReadAllText(_filePath);
+                return JsonSerializer.Deserialize<List<TemplateModel>>(json) ?? new List<TemplateModel>();
+            }
+            catch (JsonException ex)
+            {
+                // Handle or log the error appropriately
+                Console.WriteLine($"Invalid JSON format: {ex.Message}");
+                throw; // Re-throwing the exception to ensure the test catches it
+            }
         }
 
         public void SaveTemplates(IEnumerable<TemplateModel> templates)
@@ -30,7 +39,7 @@ namespace InvoiceExtractor.Services
             File.WriteAllText(_filePath, json);
         }
 
-        private void EnsureFileExists()
+        public void EnsureFileExists()
         {
             var directory = Path.GetDirectoryName(_filePath);
             if (!Directory.Exists(directory))
